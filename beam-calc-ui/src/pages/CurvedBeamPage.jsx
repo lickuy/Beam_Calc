@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Box, Card, CardContent, CardHeader, Grid, MenuItem, TextField, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
 import {
@@ -34,6 +34,23 @@ function numberOrNaN(x) {
  */
 function fmt(v) {
   return Number.isFinite(v) ? Number(v).toPrecision(6) : '-'
+}
+
+/**
+ * Local storage helpers for persisting form inputs.
+ */
+function loadInputs() {
+  try {
+    const s = localStorage.getItem('curved.inputs')
+    return s ? JSON.parse(s) : {}
+  } catch {
+    return {}
+  }
+}
+function saveInputs(obj) {
+  try {
+    localStorage.setItem('curved.inputs', JSON.stringify(obj))
+  } catch {}
 }
 
 // Inline geometry diagram for cross-sections
@@ -122,21 +139,17 @@ function SectionDiagram({ shape, params, result }) {
       <polygon points={polygonPoints} fill="#e8f0fe" stroke="#1a73e8" strokeWidth="1" />
 
       {/* Inner/Outer lines */}
-      <line x1={padX} x2={W - padX} y1={yToSvg(0)} y2={yToSvg(0)} stroke="#999" strokeDasharray="4 4" />
-      <line x1={padX} x2={W - padX} y1={yToSvg(t)} y2={yToSvg(t)} stroke="#999" strokeDasharray="4 4" />
       <text x={padX} y={Math.max(12, yToSvg(0) - 6)} fontSize="10" fill="#333" textAnchor="start" style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}>inner (y=0)</text>
       <text x={padX} y={Math.min(H - 6, yToSvg(t) + 12)} fontSize="10" fill="#333" textAnchor="start" style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}>outer (y=t)</text>
 
       {/* Centroid and neutral axis */}
       {Number.isFinite(ybar) && (
         <>
-          <line x1={padX} x2={W - padX} y1={yToSvg(ybar)} y2={yToSvg(ybar)} stroke="#43a047" strokeDasharray="3 3" />
           <text x={padX + 2} y={yToSvg(ybar) - 4} fontSize="10" textAnchor="start" fill="#2e7d32" style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}>centroid ȳ</text>
         </>
       )}
       {Number.isFinite(yn) && (
         <>
-          <line x1={padX} x2={W - padX} y1={yToSvg(yn)} y2={yToSvg(yn)} stroke="#e53935" strokeDasharray="3 3" />
           <text x={padX + 2} y={yToSvg(yn) - 4} fontSize="10" textAnchor="start" fill="#b71c1c" style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}>neutral axis y_n</text>
         </>
       )}
@@ -178,6 +191,35 @@ export default function CurvedBeamPage() {
   const [R2, setR2] = useState('0.05')
   const [t2, setT2] = useState('0.015')
   const [b2, setB2] = useState('0.02')
+
+  // Load saved inputs once
+  useEffect(() => {
+    const saved = loadInputs()
+    if (saved && typeof saved === 'object') {
+      if (saved.shape) setShape(saved.shape)
+      if (typeof saved.ri === 'string') setRi(saved.ri)
+      if (typeof saved.M === 'string') setM(saved.M)
+      if (typeof saved.P === 'string') setP(saved.P)
+      if (typeof saved.d === 'string') setD(saved.d)
+      if (typeof saved.b === 'string') setB(saved.b)
+      if (typeof saved.t === 'string') setT(saved.t)
+      if (typeof saved.bInner === 'string') setBInner(saved.bInner)
+      if (typeof saved.bOuter === 'string') setBOuter(saved.bOuter)
+      if (typeof saved.diam === 'string') setDiam(saved.diam)
+      if (typeof saved.R1 === 'string') setR1(saved.R1)
+      if (typeof saved.t1 === 'string') setT1(saved.t1)
+      if (typeof saved.b1 === 'string') setB1(saved.b1)
+      if (typeof saved.R2 === 'string') setR2(saved.R2)
+      if (typeof saved.t2 === 'string') setT2(saved.t2)
+      if (typeof saved.b2 === 'string') setB2(saved.b2)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Save on changes
+  useEffect(() => {
+    saveInputs({ shape, ri, M, P, d, b, t, bInner, bOuter, diam, R1, t1, b1, R2, t2, b2 })
+  }, [shape, ri, M, P, d, b, t, bInner, bOuter, diam, R1, t1, b1, R2, t2, b2])
 
   const params = useMemo(() => {
     switch (shape) {
